@@ -3,33 +3,38 @@ const mongoose = require("mongoose");
 let connectionPromise = null;
 
 const connectDB = async () => {
-    // If already connected, return
     if (mongoose.connection.readyState === 1) {
+        console.log("✅ Already connected");
         return;
     }
 
-    // If connecting in progress, return the same promise
-    if (connectionPromise) {
-        return connectionPromise;
-    }
+    if (connectionPromise) return connectionPromise;
 
     const uri = process.env.DATABASE_URI || process.env.MONGODB_URL;
 
+    console.log("=== ENVIRONMENT DEBUG START ===");
+    console.log("DATABASE_URI exists?", !!process.env.DATABASE_URI);
+    console.log("MONGODB_URL exists?", !!process.env.MONGODB_URL);
+    console.log("FORCE_REBUILD value:", process.env.FORCE_REBUILD);
+    console.log("All DB/MONGO/URI keys:", 
+        Object.keys(process.env)
+            .filter(k => /DB|MONGO|URI|FORCE/i.test(k))
+            .map(k => `${k}: ${process.env[k] ? 'SET' : 'undefined'}`)
+    );
+    console.log("URI length (if present):", uri ? uri.length : 0);
+    console.log("=== ENVIRONMENT DEBUG END ===");
+
     if (!uri) {
-        throw new Error("❌ MongoDB URI is missing. Please check your Vercel Environment Variables. Expected: DATABASE_URI or MONGODB_URL");
+        throw new Error(`❌ MongoDB URI is missing. Available keys: ${Object.keys(process.env).filter(k => /DB|MONGO|URI/i.test(k)).join(', ')}`);
     }
 
     connectionPromise = mongoose.connect(uri, {
-        // Optional: good defaults for serverless
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
+        serverSelectionTimeoutMS: 10000,
     })
-    .then(() => {
-        console.log("✅ Database connected successfully");
-    })
+    .then(() => console.log("✅ Database connected successfully"))
     .catch((err) => {
         connectionPromise = null;
-        console.error("❌ MongoDB connection failed:", err.message);
+        console.error("❌ Connection failed:", err.message);
         throw err;
     });
 
