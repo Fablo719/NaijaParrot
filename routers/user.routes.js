@@ -12,7 +12,7 @@ router.post('/login', login);
 router.get('/me', auth, getMe);
 router.patch('/edituser/:id', auth, editUser);
 router.get('/getUsers', auth, getAllUsers);
-router.delete('/deleteuser/:id', auth, deleteUser);
+router.delete('/deleteUser/:id', auth, deleteUser);
 // ADMIN USER ROUTES
 router.get('/admin/users', auth, admin, getAllUsers);
 router.delete('/admin/user/:id', auth, admin, deleteUser);

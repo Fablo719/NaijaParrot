@@ -33,11 +33,21 @@ const postSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+
+    
     postCategory: {
         type: String,
-        enum: ['general', 'announcement', 'question', 'discussion', 'update'],
-        default: 'general'
+        enum: [
+            'technology',
+            'business',
+            'lifestyle',
+            'creativity',
+            'wisdom',
+            'innovation'
+        ],
+        default: 'technology'
     },
+
     postImage: {
         type: String,
         default: null
@@ -61,13 +71,14 @@ const postSchema = new mongoose.Schema({
     }],
     
     savedBy: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    }
-  ],
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        }
+    ],
 
     comments: [commentSchema],
+
     shares: {
         type: Number,
         default: 0
@@ -80,9 +91,9 @@ const postSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Indexes for better query performance
-postSchema.index({ createdAt: -1 });  // For sorting by date
-postSchema.index({ authorId: 1, createdAt: -1 });  // For finding user posts
-postSchema.index({ postCategory: 1 });  // For filtering by category
+// Indexes
+postSchema.index({ createdAt: -1 });
+postSchema.index({ authorId: 1, createdAt: -1 });
+postSchema.index({ postCategory: 1 });
 
 module.exports = mongoose.model('Post', postSchema);

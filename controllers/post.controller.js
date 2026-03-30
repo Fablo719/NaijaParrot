@@ -1,19 +1,13 @@
 const Post = require("../models/Post.model");
 const User = require("../models/user.model");
 
+// -------------------- CREATE POST --------------------
 exports.createPost = async (req, res) => {
   try {
     const { postTitle, postContent, postCategory, postImage } = req.body;
 
-    // Get logged in user
     const user = await User.findById(req.user.id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const newPost = new Post({
       postTitle,
@@ -21,340 +15,219 @@ exports.createPost = async (req, res) => {
       postCategory,
       postImage,
       authorId: user._id,
-      authorName: `${user.firstName} ${user.lastName}`,
+      authorName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Anonymous",
       authorEmail: user.email
     });
 
     await newPost.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Post added successfully",
-      post: newPost
-    });
-
+    res.status(201).json({ success: true, message: "Post added successfully", post: newPost });
   } catch (error) {
     console.log("Create post error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create post"
-    });
+    res.status(500).json({ success: false, message: "Failed to create post" });
   }
 };
-// Get All Posts
+
+// -------------------- GET ALL POSTS --------------------
 exports.getAllPosts = async (req, res) => {
-    try {
-        const posts = await Post.find({ isPublic: true })
-            .sort({ createdAt: -1 })
-            .populate('authorId', 'firstName lastName email profilePicture');
-        
-        // Format posts for frontend
-        const formattedPosts = posts.map(post => ({
-            ...post.toObject(),
-            authorName: post.authorName || `${post.authorId?.firstName} ${post.authorId?.lastName}`,
-            likes: post.likes || [],
-            comments: post.comments || []
-        }));
+  try {
+    const posts = await Post.find({ isPublic: true })
+      .sort({ createdAt: -1 })
+      .populate('authorId', 'firstName lastName email profilePicture');
 
-        res.json({
-            success: true,
-            posts: formattedPosts
-        });
-    } catch (error) {
-        console.error('Get all posts error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
+    const formattedPosts = posts.map(post => ({
+      ...post.toObject(),
+      authorName: post.authorName || `${post.authorId?.firstName || ''} ${post.authorId?.lastName || ''}`.trim() || "Anonymous",
+      comments: post.comments.map(c => ({
+        ...c.toObject(),
+        userName: c.userName || "Anonymous"
+      })),
+      likes: post.likes || []
+    }));
+
+    res.json({ success: true, posts: formattedPosts });
+  } catch (error) {
+    console.error('Get all posts error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// Get User Posts
+// -------------------- GET USER POSTS --------------------
 exports.getUserPosts = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const posts = await Post.find({ authorId: userId, isPublic: true })
-            .sort({ createdAt: -1 });
-        
-        res.json({
-            success: true,
-            posts
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
+  try {
+    const { userId } = req.params;
+    const posts = await Post.find({ authorId: userId, isPublic: true }).sort({ createdAt: -1 });
+    res.json({ success: true, posts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// Like/Unlike Post
-exports.likePost = async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.postId);
-        
-        if (!post) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Post not found' 
-            });
-        }
-
-        const likedIndex = post.likes.indexOf(req.user.id);
-        
-        if (likedIndex === -1) {
-            post.likes.push(req.user.id);
-        } else {
-            post.likes.splice(likedIndex, 1);
-        }
-
-        await post.save();
-        
-        res.json({
-            success: true,
-            likes: post.likes.length,
-            isLiked: likedIndex === -1
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
-};
-
-// Add Comment
+// -------------------- ADD COMMENT --------------------
 exports.addComment = async (req, res) => {
-    try {
-        const { comment } = req.body;
-        const post = await Post.findById(req.params.postId);
-        
-        if (!post) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Post not found' 
-            });
-        }
+  try {
+    const { comment } = req.body;
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-        const newComment = {
-            userId: req.user.id,
-            userName: req.user.name || `${req.user.firstName} ${req.user.lastName}`,
-            comment: comment,
-            createdAt: new Date()
-        };
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        post.comments.push(newComment);
-        await post.save();
-        
-        res.json({
-            success: true,
-            comments: post.comments
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
+    const newComment = {
+      userId: user._id,
+      userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Anonymous",
+      comment,
+      createdAt: new Date()
+    };
+
+    post.comments.push(newComment);
+    await post.save();
+
+    res.json({ success: true, comments: post.comments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// Search Posts
-exports.searchPosts = async (req, res) => {
-    try {
-        const { q } = req.query;
-        
-        const posts = await Post.find({
-            $or: [
-                { postTitle: { $regex: q, $options: 'i' } },
-                { postContent: { $regex: q, $options: 'i' } }
-            ],
-            isPublic: true
-        }).sort({ createdAt: -1 });
+// -------------------- LIKE / UNLIKE POST --------------------
+exports.likePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-        res.json({
-            success: true,
-            posts
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
+    const likedIndex = post.likes.indexOf(req.user.id);
+    if (likedIndex === -1) post.likes.push(req.user.id);
+    else post.likes.splice(likedIndex, 1);
+
+    await post.save();
+    res.json({ success: true, likes: post.likes.length, isLiked: likedIndex === -1 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// Delete Post
+// -------------------- UPDATE POST --------------------
+exports.updatePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+    if (post.authorId.toString() !== req.user.id) return res.status(403).json({ message: "Not allowed" });
+
+    post.postTitle = req.body.postTitle || post.postTitle;
+    post.postContent = req.body.postContent || post.postContent;
+
+    await post.save();
+    res.json({ success: true, post });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// -------------------- DELETE POST --------------------
 exports.deletePost = async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.postId);
-        
-        if (!post) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Post not found' 
-            });
-        }
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+     if (post.authorId.toString() !== req.user.id && !req.user.isAdmin) return res.status(403).json({ message: "Not authorized" });
 
-        if (post.authorId.toString() !== req.user.id) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Not authorized' 
-            });
-        }
-
-        await post.deleteOne();
-        
-        res.json({
-            success: true,
-            message: 'Post deleted successfully'
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
+    await post.deleteOne();
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// Share Post
-exports.sharePost = async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.postId);
-        
-        if (!post) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Post not found' 
-            });
-        }
-
-        post.shares += 1;
-        await post.save();
-        
-        res.json({
-            success: true,
-            shares: post.shares
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
-};
+// -------------------- SAVE / UNSAVE POST --------------------
 exports.savePost = async (req, res) => {
   try {
-
     const userId = req.user.id;
     const { postId } = req.params;
 
     const post = await Post.findById(postId);
     const user = await User.findById(userId);
-
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
+    if (!post) return res.status(404).json({ message: "Post not found" });
 
     const alreadySaved = post.savedBy.includes(userId);
-
     if (alreadySaved) {
-
-      post.savedBy = post.savedBy.filter(
-        id => id.toString() !== userId
-      );
-
-      user.savedPosts = user.savedPosts.filter(
-        id => id.toString() !== postId
-      );
-
+      post.savedBy = post.savedBy.filter(id => id.toString() !== userId);
+      user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
     } else {
-
       post.savedBy.push(userId);
       user.savedPosts.push(postId);
-
     }
 
     await post.save();
     await user.save();
 
-    res.json({
-      success: true,
-      saved: !alreadySaved
-    });
-
+    res.json({ success: true, saved: !alreadySaved });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+// -------------------- GET SAVED POSTS --------------------
 exports.getSavedPosts = async (req, res) => {
   try {
-
-    const user = await User.findById(req.user.id)
-      .populate("savedPosts");
-
-    res.json({
-      success: true,
-      posts: user.savedPosts
-    });
-
+    const user = await User.findById(req.user.id).populate("savedPosts");
+    res.json({ success: true, posts: user.savedPosts });
   } catch (error) {
-    res.status(500).json({
-      message: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 };
-exports.getUserResponses = async (req, res) => {
-    try {
 
-        const posts = await Post.find({
-            "comments.userId": req.user.id
-        });
+// -------------------- SEARCH POSTS --------------------
+exports.searchPosts = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const posts = await Post.find({
+      $or: [
+        { postTitle: { $regex: q, $options: 'i' } },
+        { postContent: { $regex: q, $options: 'i' } }
+      ],
+      isPublic: true
+    }).sort({ createdAt: -1 });
 
-        const responses = [];
-
-        posts.forEach(post => {
-            post.comments.forEach(comment => {
-                if (comment.userId.toString() === req.user.id) {
-                    responses.push({
-                        postId: post._id,
-                        postTitle: post.postTitle,
-                        comment: comment.comment,
-                        createdAt: comment.createdAt
-                    });
-                }
-            });
-        });
-
-        res.status(200).json(responses);
-
-    } catch (error) {
-        res.status(500).json({
-            message: error.message
-        });
-    }
+    res.json({ success: true, posts });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
-exports.updatePost = async (req,res)=>{
 
-try{
+// -------------------- SHARE POST --------------------
+exports.sharePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-const post = await Post.findById(req.params.postId)
+    post.shares += 1;
+    await post.save();
+    res.json({ success: true, shares: post.shares });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-if(post.authorId.toString() !== req.user.id){
-return res.status(403).json({message:"Not allowed"})
-}
+// -------------------- GET USER RESPONSES --------------------
+exports.getUserResponses = async (req, res) => {
+  try {
+    const posts = await Post.find({ "comments.userId": req.user.id });
+    const responses = [];
 
-post.postTitle = req.body.postTitle || post.postTitle
-post.postContent = req.body.postContent || post.postContent
+    posts.forEach(post => {
+      post.comments.forEach(comment => {
+        if (comment.userId.toString() === req.user.id) {
+          responses.push({
+            postId: post._id,
+            postTitle: post.postTitle,
+            comment: comment.comment,
+            createdAt: comment.createdAt
+          });
+        }
+      });
+    });
 
-await post.save()
-
-res.json({
-success:true,
-post
-})
-
-}catch(error){
-res.status(500).json({message:error.message})
-}
-
-}
+    res.status(200).json(responses);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
