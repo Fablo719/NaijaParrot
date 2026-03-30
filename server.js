@@ -1,50 +1,33 @@
 const express = require("express");
-const app = express();
-const mongoose = require("mongoose");
 const cors = require('cors');
-const dotenv = require("dotenv");
-dotenv.config();
-app.set("view engine", 'ejs');
+const connectDB = require("./database/connectDB");
+
+const app = express();
+
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "50Mb" }));
 app.use(cors());
+
 // Routes
-const UserRouter = require('./routers/user.routes');
-const PostRouter = require('./routers/post.routes');
-const ProfileRouter = require('./routers/profile.routes')
+app.use('/api/v1/users', require('./routers/user.routes'));
+app.use('/api/v1/posts', require('./routers/post.routes'));
+app.use('/api/v1', require('./routers/profile.routes'));
 
-const connectDB = require("./database/connectDB");
-app.use('/api/v1/users', UserRouter);
-app.use('/api/v1/posts', PostRouter);
-app.use('/api/v1', ProfileRouter);
-
-// Database connection
-// const DATABASE_URL = process.env.DATABASE_URI || process.env.MONGODB_URL;
-// console.log("Attempting to connect to MongoDB...");
-
-// mongoose.connect(DATABASE_URL)
-//     .then(() => {
-//         console.log("✅ Database connected successfully");
-//     })
-//     .catch((error) => {
-//         console.log("❌ Failed to connect to DB");
-//         console.log("Error details:", error.message);
-//     });
-
-// Server
 app.get('/', (req, res) => {
   res.send('API is running 🚀');
 });
 
-app.listen(process.env.PORT, (err) => {
-  if (err) {
-    console.log("error starting server", err);
-  } else {
-    console.log(`server started successfully`);
-  }
-});
-
+// Vercel Serverless Handler
+module.exports = async (req, res) => {
+    try {
+        await connectDB();        // Connect first
+        return app(req, res);     // Then handle the request
+    } catch (error) {
+        console.error("Server error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
 module.exports=async(req, res)=>{
   await connectDB()
 
