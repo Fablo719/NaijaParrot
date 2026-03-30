@@ -11,13 +11,13 @@ const connectDB= async()=>{
     .connect(process.env.DATABASE_URI)
     .then(()=>{
         console.log("Database connected successfully");
-
+        
     })
     .catch((err)=>{
         connectionPromise=null;
         console.log(err);
         throw err;
-
+        
     })
 
     return connectionPromise
