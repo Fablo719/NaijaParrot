@@ -37,7 +37,7 @@ app.listen(process.env.PORT, (err) =>{
   }
 });
 
-module.export=async(req, res)=>{
+module.exports=async(req, res)=>{
   await connectDB()
 
   return app(req, res)
