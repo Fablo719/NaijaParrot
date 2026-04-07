@@ -1,36 +1,54 @@
 const mongoose = require("mongoose");
 
-let connectionPromise = null;
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-  // If already connected → reuse
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection;
+  if (cached.conn) {
+    console.log("✅ Using existing MongoDB connection");
+    return cached.conn;
   }
 
-  // If connection is in progress → wait for it
-  if (mongoose.connection.readyState === 2) {
-    return connectionPromise;
-  }
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,           // Disable Mongoose buffering
+      serverSelectionTimeoutMS: 30000, // 30s - good for cold starts
+      socketTimeoutMS: 45000,
+      // Optional: reduce pool size for serverless
+      maxPoolSize: 5,
+      minPoolSize: 1,
+    };
 
-  if (!connectionPromise) {
-    connectionPromise = mongoose
-      .connect(process.env.DATABASE_URI, {
-        bufferCommands: false, // prevents buffering timeout
-        serverSelectionTimeoutMS: 30000, // safer for Vercel cold starts
-      })
+    const uri = process.env.DATABASE_URI;
+    if (!uri) {
+      throw new Error("❌ DATABASE_URI is not defined in environment variables");
+    }
+
+    console.log("🔄 Connecting to MongoDB...");
+
+    cached.promise = mongoose
+      .connect(uri, opts)
       .then((mongooseInstance) => {
-        console.log("Database connected successfully");
+        console.log("✅ MongoDB connected successfully");
         return mongooseInstance;
       })
       .catch((err) => {
-        connectionPromise = null;
-        console.error("MongoDB connection error:", err);
+        console.error("❌ MongoDB connection failed:", err.message);
+        cached.promise = null;   // Reset on failure so next call retries
         throw err;
       });
   }
 
-  return connectionPromise;
+  try {
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (error) {
+    cached.promise = null;
+    throw error;
+  }
 };
 
 module.exports = connectDB;
