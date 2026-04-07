@@ -1,26 +1,36 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
-let connectionPromise = null
+let connectionPromise = null;
 
-const connectDB= async()=>{
-    if(mongoose.connection.readyState===1) return
+const connectDB = async () => {
+  // If already connected → reuse
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
 
-    if (connectionPromise) return connectionPromise
+  // If connection is in progress → wait for it
+  if (mongoose.connection.readyState === 2) {
+    return connectionPromise;
+  }
 
+  if (!connectionPromise) {
     connectionPromise = mongoose
-    .connect(process.env.DATABASE_URI)
-    .then(()=>{
+      .connect(process.env.DATABASE_URI, {
+        bufferCommands: false, // prevents buffering timeout
+        serverSelectionTimeoutMS: 30000, // safer for Vercel cold starts
+      })
+      .then((mongooseInstance) => {
         console.log("Database connected successfully");
-        
-    })
-    .catch((err)=>{
-        connectionPromise=null;
-        console.log(err);
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        connectionPromise = null;
+        console.error("MongoDB connection error:", err);
         throw err;
-        
-    })
+      });
+  }
 
-    return connectionPromise
-}
+  return connectionPromise;
+};
 
-module.exports= connectDB
+module.exports = connectDB;

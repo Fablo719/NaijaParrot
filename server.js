@@ -37,16 +37,16 @@ app.get('/', (req, res) => {
   res.send('API is running 🚀');
 });
 
-app.listen(process.env.PORT, (err) => {
-  if (err) {
-    console.log("error starting server", err);
-  } else {
-    console.log(`server started successfully`);
-  }
-});
-
-module.exports=async(req, res)=>{
-  await connectDB()
-
-  return app(req, res)
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    app.listen(process.env.PORT, (err) => {
+      if (err) {
+        console.log('error starting server');
+      } else {
+        console.log('server started successfully');
+      }
+    });
+  });
 }
+
+module.exports = app;
