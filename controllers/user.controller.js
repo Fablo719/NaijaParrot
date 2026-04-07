@@ -1,9 +1,10 @@
 const User = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const connectDB = require("../database/connectDB")
 // -------------------- REGISTER USER --------------------
 const createUser = async (req, res) => {
+    await connectDB()
     const { firstName, lastName, email, password } = req.body;
 
     try {
@@ -84,6 +85,9 @@ const createUser = async (req, res) => {
 
 // -------------------- LOGIN USER --------------------
 const login = async (req, res) => {
+    await connectDB()
+    
+    
     const { email, password } = req.body;
 
     try {
@@ -125,6 +129,7 @@ const login = async (req, res) => {
 
 // -------------------- GET CURRENT USER --------------------
 const getMe = async (req, res) => {
+    await connectDB()
     try {
         const user = await User.findById(req.user.id).select("-password");
         res.status(200).json({
@@ -146,6 +151,7 @@ const getMe = async (req, res) => {
 
 // -------------------- EDIT USER --------------------
 const editUser = async (req, res) => {
+    await connectDB()
     const { id } = req.params;
     const { firstName, lastName, email } = req.body;
 
@@ -167,6 +173,7 @@ const editUser = async (req, res) => {
 
 // -------------------- GET ALL USERS --------------------
 const getAllUsers = async (req, res) => {
+    await connectDB()
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: "Access denied" });
 
@@ -180,6 +187,7 @@ const getAllUsers = async (req, res) => {
 
 // -------------------- DELETE USER --------------------
 const deleteUser = async (req, res) => {
+    await connectDB()
     const { id } = req.params;
     try {
         const user = await User.findByIdAndDelete(id);
@@ -194,6 +202,7 @@ const deleteUser = async (req, res) => {
 
 // ====================== UPDATE USER ROLE ======================
 exports.updateUserRole = async (req, res) => {
+    await connectDB()
   try {
     const { id } = req.params;
     const { role } = req.body;

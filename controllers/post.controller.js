@@ -1,8 +1,9 @@
 const Post = require("../models/Post.model");
 const User = require("../models/user.model");
-
+const connectDB = require("../database/connectDB")
 // -------------------- CREATE POST --------------------
 exports.createPost = async (req, res) => {
+  await connectDB()
   try {
     const { postTitle, postContent, postCategory, postImage } = req.body;
 
@@ -30,6 +31,7 @@ exports.createPost = async (req, res) => {
 
 // -------------------- GET ALL POSTS --------------------
 exports.getAllPosts = async (req, res) => {
+  await connectDB()
   try {
     const posts = await Post.find({ isPublic: true })
       .sort({ createdAt: -1 })
@@ -54,6 +56,7 @@ exports.getAllPosts = async (req, res) => {
 
 // -------------------- GET USER POSTS --------------------
 exports.getUserPosts = async (req, res) => {
+  await connectDB()
   try {
     const { userId } = req.params;
     const posts = await Post.find({ authorId: userId, isPublic: true }).sort({ createdAt: -1 });
@@ -65,6 +68,7 @@ exports.getUserPosts = async (req, res) => {
 
 // -------------------- ADD COMMENT --------------------
 exports.addComment = async (req, res) => {
+  await connectDB()
   try {
     const { comment } = req.body;
     const post = await Post.findById(req.params.postId);
@@ -91,6 +95,7 @@ exports.addComment = async (req, res) => {
 
 // -------------------- LIKE / UNLIKE POST --------------------
 exports.likePost = async (req, res) => {
+  await connectDB()
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
@@ -108,6 +113,7 @@ exports.likePost = async (req, res) => {
 
 // -------------------- UPDATE POST --------------------
 exports.updatePost = async (req, res) => {
+  await connectDB()
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
@@ -125,6 +131,7 @@ exports.updatePost = async (req, res) => {
 
 // -------------------- DELETE POST --------------------
 exports.deletePost = async (req, res) => {
+  await connectDB()
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
@@ -139,6 +146,7 @@ exports.deletePost = async (req, res) => {
 
 // -------------------- SAVE / UNSAVE POST --------------------
 exports.savePost = async (req, res) => {
+  await connectDB()
   try {
     const userId = req.user.id;
     const { postId } = req.params;
@@ -167,6 +175,7 @@ exports.savePost = async (req, res) => {
 
 // -------------------- GET SAVED POSTS --------------------
 exports.getSavedPosts = async (req, res) => {
+  await connectDB()
   try {
     const user = await User.findById(req.user.id).populate("savedPosts");
     res.json({ success: true, posts: user.savedPosts });
@@ -177,6 +186,7 @@ exports.getSavedPosts = async (req, res) => {
 
 // -------------------- SEARCH POSTS --------------------
 exports.searchPosts = async (req, res) => {
+  await connectDB()
   try {
     const { q } = req.query;
     const posts = await Post.find({
