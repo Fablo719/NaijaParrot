@@ -192,5 +192,57 @@ const deleteUser = async (req, res) => {
     }
 };
 
+// ====================== UPDATE USER ROLE ======================
+exports.updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role || !["admin", "user"].includes(role)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Role must be 'admin' or 'user'" 
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Safety: Prevent changing your own role
+    if (id === req.user.id) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "You cannot change your own role" 
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({ 
+      success: true, 
+      message: "User role updated successfully",
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error("Update user role error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while updating role" 
+    });
+  }
+};
+
 // -------------------- EXPORT CONTROLLERS --------------------
 module.exports = { createUser, login, getMe, editUser, getAllUsers, deleteUser };
